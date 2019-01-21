@@ -54,7 +54,6 @@ Serverside, something like the following.
   }
 
   verifyChallenge(sig) {
-    console.log(this.challenge)
     var recovered = metaAuth.checkChallenge(this.challenge[1].value, sig);
     this.socket.emit('auth/result', recovered);
   }
