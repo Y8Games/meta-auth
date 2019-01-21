@@ -7,10 +7,10 @@ $ npm install meta-auth --save
 ```
 Client side will look something like
 ```
+var from = web3.eth.accounts[0];
 var socket = io(window.location.href);
-socket.on('connect', () => {
-  var from = Wallet.getAddress();
 
+socket.on('connect', () => {
   if (from) {
     socket.emit('auth/challenge', from);
   } else {
@@ -18,7 +18,6 @@ socket.on('connect', () => {
   }
 });
 socket.on('auth/challenge', (challenge) => {
-  var from = Wallet.getAddress();
   const params = [challenge, from];
   const method = 'eth_signTypedData';
 
@@ -35,7 +34,6 @@ socket.on('auth/challenge', (challenge) => {
   });
 });
 socket.on('auth/result', (data) => {
-  var from = Wallet.getAddress();
     if (data === from) {
       loggedIn = true;
       console.log('logged in')
