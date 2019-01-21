@@ -1,31 +1,64 @@
 # MetaAuth
-Express middleware for handling authentication with [MetaMask](https://metamask.io).
+Helper functions for handling authentication with [MetaMask](https://metamask.io) in socket.io or another io module.
 
 ## Usage
 ```
 $ npm install meta-auth --save
 ```
-Include the middleware in your express routes
+Client side will look something like
 ```
-const metaAuth = require('meta-auth')();
+var socket = io(window.location.href);
+socket.on('connect', () => {
+  var from = Wallet.getAddress();
 
-app.get('/auth/:MetaAddress', metaAuth, (req, res) => {
-  // Request a challenge from the server
-  res.send(req.metaAuth.challenge)
-});
-
-app.get('/auth/:MetaMessage/:MetaSignature', metaAuth, (req, res) => {
-  if (req.metaAuth.recovered) {
-    // Signature matches the cached address/challenge
-    // Authentication is valid, assign JWT, etc.
-    res.send(req.metaAuth.recovered);
+  if (from) {
+    socket.emit('auth/challenge', from);
   } else {
-    // Sig did not match, invalid authentication
-    res.status(400).send();
-  };
+    console.log('no metamask found :c')
+  }
+});
+socket.on('auth/challenge', (challenge) => {
+  var from = Wallet.getAddress();
+  const params = [challenge, from];
+  const method = 'eth_signTypedData';
+
+  web3.currentProvider.sendAsync({
+    method,
+    params,
+    from
+  }, async (err, result) => {
+    if (err) { return console.error(err); }
+    if (result.error) { return console.error(result.error); }
+    var signature = result.result;
+
+    socket.emit('auth/response', signature);
+  });
+});
+socket.on('auth/result', (data) => {
+  var from = Wallet.getAddress();
+    if (data === from) {
+      loggedIn = true;
+      console.log('logged in')
+    } else {
+      loggedIn = false;
+      console.log('login failed')
+    }
 });
 ```
-MetaAuth will check the route parameters for `:MetaAddress`, `:MetaMessage`, and `:MetaSignature`
+Serverside, something like the following.
+
+```
+ createChallenge(address) {
+    this.challenge = metaAuth.createChallenge(address)
+    this.socket.emit('auth/challenge', this.challenge);
+  }
+
+  verifyChallenge(sig) {
+    console.log(this.challenge)
+    var recovered = metaAuth.checkChallenge(this.challenge[1].value, sig);
+    this.socket.emit('auth/result', recovered);
+  }
+```
 
 Parameter names may be changed when passing in an optional config.
 ```
